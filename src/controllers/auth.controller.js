@@ -1,5 +1,6 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
+import * as emailService from "../services/email.service.js";
 
 export async function registerController(req, res) {
   const { email, password, name } = req.body;
@@ -32,6 +33,7 @@ export async function registerController(req, res) {
      message: "User registered successfully",
      status: "success",
   })
+  await emailService.sendRegistrationEmail(user.email, user.name);
 
 
 }
