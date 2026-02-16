@@ -140,3 +140,74 @@ export async function   createTransaction(req, res) {
     });
 
 }
+
+export async function createInitialFundsTransaction(req, res) {
+
+    const { toAccount, amount, idempotencyKey } = req.body;
+    
+    if( !toAccount || !amount || !idempotencyKey ) {
+        return res.status(400).json({
+            message: "toAccount, amount and idempotencyKey are required"
+        })
+    }
+
+    const toUserAccount = await accountModel.findOne({
+        _id: toAccount,
+    })
+
+    if( !toUserAccount ) {
+        return res.status(400).json({
+            message: "Invalid toAccount, account not found"
+        })
+    }
+
+    const fromUserAccount = await accountModel.findOne({
+    
+        user: req.user._id
+    })
+
+    if( !fromUserAccount ) {
+        return res.status(400).json({
+            message: "System account for the user not found"
+        });
+    }
+
+    const session = await transactionModel.startSession();
+    session.startTransaction();
+
+    const transaction = new transactionModel({
+        fromAccount: fromUserAccount._id,
+        toAccount,
+        amount,
+        idempotencyKey,
+        status: 'PENDING'
+    });
+    
+    const debitLedgerEntry = await ledgerModel.create([{
+    account: fromUserAccount._id,
+    transaction: transaction._id,
+    amount: amount,
+    type: 'debit'
+    }], { session });
+
+    const creditLedgerEntry = await ledgerModel.create([{
+    account: toAccount,
+    transaction: transaction._id,
+    amount: amount,
+    type: 'credit'
+    }], { session });
+
+
+    transaction.status = 'COMPLETED';
+    await transaction.save({ session });
+
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(201).json({
+        message: "Initial funds transaction completed successfully",
+        transaction
+    });
+
+}
