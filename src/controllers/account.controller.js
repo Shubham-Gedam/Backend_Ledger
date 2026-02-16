@@ -11,3 +11,12 @@ export async function CreateAccountController(req, res){
         account
     })
 }
+
+export async function GetAccountsController(req, res){
+
+    const accounts = await accountModel.find({user: req.user._id});
+
+    res.status(200).json({
+        accounts
+    })
+}
