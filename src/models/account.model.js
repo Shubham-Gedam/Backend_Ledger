@@ -35,7 +35,7 @@ accountSchema.methods.getBalance = async function () {
     { $match: { account: this._id } },
     {
       $group: {
-        _id: "$type",
+        _id: null,
         totalDebit: {
           $sum: {
             $cond: [{ $eq: ["$type", "DEBIT"] }, "$amount", 0],
@@ -48,11 +48,19 @@ accountSchema.methods.getBalance = async function () {
         },
       },
     },
+    {
+      $project: {
+        _id: 0,
+        balance: { $subtract: ["$totalCredit", "$totalDebit"] },
+      },
+    },
   ]);
+
   if (balanceData.length === 0) {
     return 0;
   }
-  return balanceData[0].balance
+
+  return balanceData[0].balance;
 };
 
 const accountModel = mongoose.model("Account", accountSchema);
